@@ -54,16 +54,16 @@ pipeline {
             }
         }
 
-        stage('Apply') {
-            when {
-                expression { params.autoApprove && currentBuild.resultIsBetterOrEqualTo('SUCCESS') }
-            }
-            steps {
-                script {
-                    bat(script: 'cd terraform && terraform apply -input=false tfplan', label: 'Terraform Apply')
-                }
-            }
-        }
+        // stage('Apply') {
+        //     when {
+        //         expression { params.autoApprove && currentBuild.resultIsBetterOrEqualTo('SUCCESS') }
+        //     }
+        //     steps {
+        //         script {
+        //             bat(script: 'cd terraform && terraform apply -input=false tfplan', label: 'Terraform Apply')
+        //         }
+        //     }
+        // }
 
         stage('Destroy') {
             when {
