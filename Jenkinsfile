@@ -1,6 +1,7 @@
 pipeline {
     parameters {
         booleanParam(name: 'autoApprove', defaultValue: false, description: 'Automatically run apply after generating plan?')
+        booleanParam(name: 'destroyResources', defaultValue: false, description: 'Destroy resources?')
     }
 
     environment {
@@ -48,9 +49,29 @@ pipeline {
         }
 
         stage('Apply') {
+            when {
+                expression { params.autoApprove }
+            }
             steps {
                 script {
                     bat(script: 'cd terraform && terraform apply -input=false tfplan', label: 'Terraform Apply')
+                }
+            }
+        }
+
+        stage('Destroy') {
+            when {
+                expression { params.destroyResources }
+            }
+            steps {
+                script {
+                    def userInput = input message: 'Do you want to destroy resources?',
+                                         parameters: [booleanParam(defaultValue: false, description: 'Proceed with destruction?')]
+                    if (userInput) {
+                        bat(script: 'cd terraform && terraform destroy -auto-approve', label: 'Terraform Destroy')
+                    } else {
+                        echo 'Destruction of resources canceled.'
+                    }
                 }
             }
         }
