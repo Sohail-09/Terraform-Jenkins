@@ -1,7 +1,7 @@
 pipeline {
     parameters {
         booleanParam(name: 'autoApprove', defaultValue: false, description: 'Automatically run apply after generating plan?')
-        booleanParam(name: 'destroyResources', defaultValue: false, description: 'Destroy resources?')
+        booleanParam(name: 'destroyResources', defaultValue: false, description: 'Destroy resources if no resources to create?')
     }
 
     environment {
@@ -28,6 +28,12 @@ pipeline {
                     bat(script: 'cd terraform && terraform init', label: 'Terraform Init')
                     bat(script: 'cd terraform && terraform plan -out tfplan', label: 'Terraform Plan')
                     bat(script: 'cd terraform && terraform show -no-color tfplan > tfplan.txt', label: 'Terraform Show')
+
+                    def planOutput = readFile 'terraform/tfplan.txt'
+                    if (planOutput.contains('No changes')) {
+                        echo 'No resources to create. Skipping apply stage.'
+                        currentBuild.result = 'SUCCESS'  // Mark the build as successful to skip subsequent stages
+                    }
                 }
             }
         }
@@ -50,7 +56,7 @@ pipeline {
 
         stage('Apply') {
             when {
-                expression { params.autoApprove }
+                expression { params.autoApprove && currentBuild.resultIsBetterOrEqualTo('SUCCESS') }
             }
             steps {
                 script {
@@ -61,7 +67,10 @@ pipeline {
 
         stage('Destroy') {
             when {
-                expression { params.destroyResources }
+                allOf {
+                    expression { params.destroyResources }
+                    expression { currentBuild.resultIsBetterOrEqualTo('SUCCESS') }
+                }
             }
             steps {
                 script {
